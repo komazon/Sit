@@ -7,7 +7,7 @@
  *   status                 作業ファイルの変更状態を表示
  *   commit -m <msg>        現在の .sb3 をコミット
  *   log [-n <n>]           コミット履歴を表示
- *   diff [ref1] [ref2]     ブロック差分を scratchblocks 形式で表示
+ *   diff [ref1] [ref2]     ブロック差分を SVG で表示
  *   show <ref>             コミットの詳細を表示
  *   checkout <ref>         指定コミット/ブランチに .sb3 を復元
  *   branch [name]          ブランチ作成 or 一覧
@@ -20,10 +20,10 @@ import { program }             from 'commander';
 import chalk                   from 'chalk';
 import path                    from 'path';
 import { existsSync }          from 'fs';
-import { writeFile }           from 'fs/promises';
+import { writeFile, mkdir }    from 'fs/promises';
 import { readSb3, writeSb3 }   from './sb3.js';
 import { Repo, GIT_DIR }       from './repo.js';
-import { diffProjects, formatDiff } from './diff.js';
+import { diffProjects, formatDiffSvg } from './diff.js';
 
 // ------------------------------------------------------------------ //
 // ユーティリティ
@@ -207,12 +207,15 @@ program
 program
   .command('diff [ref1] [ref2]')
   .description([
-    'ブロック差分を scratchblocks 形式で表示',
+    'ブロック差分を SVG 形式で表示 (HTML ファイル出力)',
     '  引数なし    : 作業ファイル vs HEAD',
     '  ref1 のみ   : ref1 vs HEAD',
     '  ref1 ref2   : ref1 vs ref2',
+    '',
+    '出力先: sb3git-diff-<timestamp>.html',
   ].join('\n'))
   .option('-l, --locale <locale>', 'ロケール', 'en')
+  .option('-o, --output <file>', '出力 HTML ファイル名')
   .action(async (ref1, ref2, opts) => {
     assertInit();
     const config = await repo.getConfig();
@@ -242,7 +245,14 @@ program
     }
 
     const diffs = diffProjects(oldProject, newProject, opts.locale);
-    console.log(formatDiff(diffs));
+    const svgHtml = formatDiffSvg(diffs);
+
+    const outputFile = opts.output || `sb3git-diff-${Date.now()}.html`;
+    await mkdir(path.dirname(outputFile) || '.', { recursive: true });
+    await writeFile(outputFile, svgHtml, 'utf8');
+
+    console.log(chalk.green(`✓ 差分を ${outputFile} に出力しました`));
+    console.log(chalk.gray(`  差分スプライト数：${diffs.length}`));
   });
 
 // ------------------------------------------------------------------ //
@@ -251,7 +261,7 @@ program
 
 program
   .command('show [ref]')
-  .description('指定コミット (省略時 HEAD) の詳細とブロック差分を表示')
+  .description('指定コミット (省略時 HEAD) の詳細を表示')
   .option('-l, --locale <locale>', 'ロケール', 'en')
   .action(async (ref = 'HEAD', opts) => {
     assertInit();
@@ -267,13 +277,11 @@ program
     if (commit.parent) {
       const parent = await repo.loadCommit(commit.parent);
       const diffs  = diffProjects(parent.projectJson, commit.projectJson, opts.locale);
-      console.log(formatDiff(diffs));
+      console.log(chalk.gray(`  変更スプライト数：${diffs.length}`));
     } else {
-      // 初回コミット: 全スプライトを追加として表示
-      const initDiffs = (commit.projectJson.targets ?? [])
-        .filter(t => !t.isStage)
-        .map(t => ({ name: t.name, type: 'added', blockDiff: null, varChanges: [], costumeChanges: [], soundChanges: [] }));
-      console.log(formatDiff(initDiffs));
+      // 初回コミット
+      const spriteCnt = (commit.projectJson.targets ?? []).filter(t => !t.isStage).length;
+      console.log(chalk.gray(`  初回コミット - スプライト数：${spriteCnt}`));
     }
   });
 
