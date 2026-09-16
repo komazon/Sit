@@ -1,0 +1,19 @@
+{
+  "name": "scratch-git",
+  "version": "0.1.0",
+  "description": "Scratch (.sb3) ファイル用のGitライクなバージョン管理ツール",
+  "type": "module",
+  "bin": {
+    "sb3git": "./sb3git.js"
+  },
+  "scripts": {
+    "start": "node ./sb3git.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "diff": "^5.2.0",
+    "jszip": "^3.10.1",
+    "parse-sb3-blocks": "^0.5.2"
+  }
+}
