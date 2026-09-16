@@ -221,10 +221,17 @@ export class Repo {
    */
   async _resolveHashFull(shortHash) {
     const files = await readdir(this.commitsDir);
-    const match = files.filter(f => f.replace(/\.json$/, '').startsWith(shortHash));
-    if (match.length === 0) throw new Error(`コミット '${shortHash}' が見つかりません`);
-    if (match.length > 1)   throw new Error(`短縮ハッシュが曖昧です: ${shortHash}`);
-    return match[0].replace(/\.json$/, '');
+    const target = shortHash.toLowerCase();
+    const matches = [];
+    for (const f of files) {
+      const hash = f.replace(/\.json$/, '');
+      if (hash.toLowerCase().startsWith(target)) {
+        matches.push(hash);
+      }
+    }
+    if (matches.length === 0) throw new Error(`コミット '${shortHash}' が見つかりません`);
+    if (matches.length > 1)   throw new Error(`短縮ハッシュが曖昧です: ${shortHash} (${matches.join(', ')})`);
+    return matches[0];
   }
 
   /**
@@ -234,13 +241,18 @@ export class Repo {
    */
   async resolveRef(ref) {
     // HEAD
-    if (ref === 'HEAD') return this.getCurrentCommitHash();
+    if (ref === 'HEAD') {
+      const hash = await this.getCurrentCommitHash();
+      if (!hash) throw new Error('コミットが存在しません');
+      return hash;
+    }
 
     // HEAD~n
     const relMatch = ref.match(/^HEAD~(\d+)$/);
     if (relMatch) {
       const n = parseInt(relMatch[1], 10);
       let hash = await this.getCurrentCommitHash();
+      if (!hash) throw new Error('HEAD が指すコミットが存在しません');
       for (let i = 0; i < n; i++) {
         const c = await this.loadCommit(hash);
         if (!c.parent) throw new Error(`HEAD~${n} は存在しません (コミット数が足りません)`);
