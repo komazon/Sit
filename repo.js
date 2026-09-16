@@ -220,9 +220,8 @@ export class Repo {
    * @returns {Promise<string>}
    */
   async _resolveHashFull(shortHash) {
-    if (shortHash.length === 40) return shortHash;
     const files = await readdir(this.commitsDir);
-    const match = files.filter(f => f.startsWith(shortHash));
+    const match = files.filter(f => f.replace(/\.json$/, '').startsWith(shortHash));
     if (match.length === 0) throw new Error(`コミット '${shortHash}' が見つかりません`);
     if (match.length > 1)   throw new Error(`短縮ハッシュが曖昧です: ${shortHash}`);
     return match[0].replace(/\.json$/, '');
