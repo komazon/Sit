@@ -8,6 +8,8 @@
 import { toScratchblocks } from 'parse-sb3-blocks';
 import { diffLines } from 'diff';
 import chalk from 'chalk';
+import scratchblocksInit from 'scratchblocks/index.js';
+import { JSDOM } from 'jsdom';
 
 // ------------------------------------------------------------------ //
 // ブロック → scratchblocks テキスト変換
@@ -41,6 +43,7 @@ function targetToText(target, locale = 'en') {
       scripts.push(`// [parse error: ${id}]`);
     } finally {
       console.error = _err;
+      console.log = _log;
     }
   }
 
@@ -158,6 +161,10 @@ export function formatDiffSvg(diffResults) {
 </html>`;
   }
 
+  // JSDOM を使ってサーバーサイドで SVG レンダリング
+  const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>');
+  const sb = scratchblocksInit(dom.window);
+
   const spriteSections = diffResults.map(result => {
     let content = '';
     
@@ -185,8 +192,8 @@ export function formatDiffSvg(diffResults) {
         if (oldBlocks.length > 0 || newBlocks.length > 0) {
           content += '<div class="diff-section"><h3>ブロック差分</h3>';
           content += '<div class="diff-row">';
-          content += `<div class="diff-old">${renderBlocksSvg(oldBlocks)}</div>`;
-          content += `<div class="diff-new">${renderBlocksSvg(newBlocks)}</div>`;
+          content += `<div class="diff-old">${renderBlocksSvgInline(oldBlocks, sb)}</div>`;
+          content += `<div class="diff-new">${renderBlocksSvgInline(newBlocks, sb)}</div>`;
           content += '</div></div>';
         }
       }
@@ -233,7 +240,6 @@ export function formatDiffSvg(diffResults) {
 <head>
   <meta charset="UTF-8">
   <title>sb3git diff - ${new Date().toISOString()}</title>
-  <script src="https://scratchblocks.github.io/js/scratchblocks-v3.5-min.js"></script>
   <style>
     body { font-family: sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f9f9f9; }
     h1 { color: #4a6da7; border-bottom: 2px solid #4a6da7; padding-bottom: 10px; }
@@ -259,9 +265,6 @@ export function formatDiffSvg(diffResults) {
   <h1>🔍 sb3git diff</h1>
   <p><small>Generated: ${new Date().toLocaleString('ja-JP')}</small></p>
   <div class="diff-results">${spriteSections}</div>
-  <script>
-    scratchblocks.renderMatching('pre.blocks');
-  </script>
 </body>
 </html>`;
 }
@@ -275,10 +278,18 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function renderBlocksSvg(lines) {
+function renderBlocksSvgInline(lines, sb) {
   if (lines.length === 0) return '<p><small>（変更なし）</small></p>';
   const code = lines.join('\n');
-  return `<pre class="blocks">${escapeHtml(code)}</pre>`;
+  
+  try {
+    const doc = sb.parse(code);
+    const svg = sb.render(doc, { style: 'scratch3', scale: 1 });
+    const svgString = svg.outerHTML;
+    return svgString;
+  } catch (e) {
+    return `<pre class="blocks">${escapeHtml(code)}</pre>`;
+  }
 }
 
 // ------------------------------------------------------------------ //

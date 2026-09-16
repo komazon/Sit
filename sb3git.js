@@ -253,6 +253,29 @@ program
 
     console.log(chalk.green(`✓ 差分を ${outputFile} に出力しました`));
     console.log(chalk.gray(`  差分スプライト数：${diffs.length}`));
+
+    // ブラウザで開く
+    const openUrl = path.isAbsolute(outputFile) ? `file://${outputFile}` : `file://${path.join(process.cwd(), outputFile)}`;
+    console.log(chalk.gray(`  ブラウザで開いています...`));
+    
+    try {
+      if (process.platform === 'win32') {
+        import('child_process').then(({ exec }) => {
+          exec(`start "${openUrl}"`);
+        });
+      } else if (process.platform === 'darwin') {
+        import('child_process').then(({ exec }) => {
+          exec(`open "${openUrl}"`);
+        });
+      } else {
+        import('child_process').then(({ exec }) => {
+          exec(`xdg-open "${openUrl}"`);
+        });
+      }
+    } catch (e) {
+      // ブラウザ起動に失敗してもエラーにはしない
+      console.log(chalk.yellow(`  ブラウザの自動起動に失敗しました。手動で開いてください：${openUrl}`));
+    }
   });
 
 // ------------------------------------------------------------------ //
