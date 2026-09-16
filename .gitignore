@@ -1,20 +1,6 @@
 ```
 # Dependencies
 node_modules/
-
-# Build artifacts
-build/
-dist/
-
-# Logs and temp files
-*.log
-*.tmp
-
-# Environment
-.env
-.env.local
-*.env.*
-
 # Package lock files
 package-lock.json
 ```
