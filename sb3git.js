@@ -23,7 +23,7 @@ import { existsSync }          from 'fs';
 import { writeFile, mkdir }    from 'fs/promises';
 import { readSb3, writeSb3 }   from './sb3.js';
 import { Repo, GIT_DIR }       from './repo.js';
-import { diffProjects, formatDiffSvg } from './diff.js';
+import { diffProjects, formatDiffSvg, formatDiff } from './diff.js';
 
 // ------------------------------------------------------------------ //
 // ユーティリティ
@@ -261,7 +261,7 @@ program
     try {
       if (process.platform === 'win32') {
         import('child_process').then(({ exec }) => {
-          exec(`start "${openUrl}"`);
+          exec(`start "" "${openUrl}"`);
         });
       } else if (process.platform === 'darwin') {
         import('child_process').then(({ exec }) => {
